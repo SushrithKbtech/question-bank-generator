@@ -11,7 +11,7 @@ def run_generation_loop(
     context_snippets: list[dict],
     subject_profile: dict | None,
     question_mix: dict | None,
-    max_iters: int = 2,
+    max_iters: int = 4,
     model: str = "gpt-4o-mini",
 ):
     gen = GeneratorAgent(model=model)

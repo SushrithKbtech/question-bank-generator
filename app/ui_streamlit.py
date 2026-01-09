@@ -121,9 +121,9 @@ st.session_state.setdefault("last_upload_sig", None)
 collection_name = "course_material"
 chunk_size = 1000
 overlap = 200
-top_k = 8
+top_k = 4
 min_importance = 1
-max_total_ctx = 120
+max_total_ctx = 80
 include_sample_papers = True
 bloom_focus = "Mixed"
 
@@ -380,7 +380,7 @@ if generate_clicked:
                     context_snippets=st.session_state.ctx,
                     subject_profile=st.session_state.get("subject_profile"),
                     question_mix=norm_mix,
-                    max_iters=2,
+                    max_iters=4,
                     model="gpt-4o-mini",
                 )
 
