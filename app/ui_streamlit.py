@@ -30,19 +30,13 @@ st.markdown(
   --ink: #e7edf6;
   --ink-2: #9aa7ba;
   --border: #1f2836;
-  --accent: #7ea6d9;
 }
 html, body, [class*="css"] {
   font-family: "Manrope", Arial, sans-serif;
   color: var(--ink);
 }
-.stApp {
-  background: var(--bg);
-}
-.block-container {
-  max-width: 1100px;
-  padding-top: 1.4rem;
-}
+.stApp { background: var(--bg); }
+.block-container { max-width: 1100px; padding-top: 1.4rem; }
 .hero {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -50,28 +44,16 @@ html, body, [class*="css"] {
   padding: 1.2rem 1.4rem;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
-.hero h1 {
-  font-size: 1.9rem;
-  margin: 0;
-}
-.hero p {
-  margin: 0.35rem 0 0;
-  color: var(--ink-2);
-}
+.hero h1 { font-size: 1.9rem; margin: 0; }
+.hero p { margin: 0.35rem 0 0; color: var(--ink-2); }
 .card {
   background: var(--panel-2);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 0.9rem 1rem;
 }
-.label {
-  font-weight: 600;
-  margin-bottom: 0.4rem;
-}
-.hint {
-  color: var(--ink-2);
-  font-size: 0.92rem;
-}
+.label { font-weight: 600; margin-bottom: 0.4rem; }
+.hint { color: var(--ink-2); font-size: 0.92rem; }
 .stButton>button, .stDownloadButton>button {
   background: #1a2230;
   color: #e7edf6;
@@ -79,16 +61,7 @@ html, body, [class*="css"] {
   border-radius: 10px;
   padding: 0.55rem 1rem;
 }
-.stButton>button:hover, .stDownloadButton>button:hover {
-  background: #212d3f;
-}
-section[data-testid="stSidebar"] {
-  background: #0b0f15;
-  border-right: 1px solid var(--border);
-}
-section[data-testid="stSidebar"] * {
-  color: var(--ink);
-}
+.stButton>button:hover, .stDownloadButton>button:hover { background: #212d3f; }
 </style>
 """,
     unsafe_allow_html=True,
@@ -98,7 +71,7 @@ st.markdown(
     """
 <div class="hero">
   <h1>Outcome-QBank</h1>
-  <p>Upload your outcomes and materials. Get clean, grounded questions.</p>
+  <p>Upload outcomes and materials. Generate grounded questions fast.</p>
 </div>
 """,
     unsafe_allow_html=True,
@@ -116,6 +89,7 @@ st.session_state.setdefault("last_audit", None)
 st.session_state.setdefault("last_qb", None)
 st.session_state.setdefault("coverage_report", None)
 st.session_state.setdefault("last_upload_sig", None)
+st.session_state.setdefault("last_run_sig", None)
 
 # -------- Minimal settings --------
 collection_name = "course_material"
@@ -123,12 +97,12 @@ chunk_size = 1000
 overlap = 200
 top_k = 4
 min_importance = 1
-max_total_ctx = 80
+max_total_ctx = 40
 include_sample_papers = True
 bloom_focus = "Mixed"
 
 st.subheader("Upload")
-st.markdown("<div class='hint'>Course outcomes are required. Materials and sample papers improve quality.</div>", unsafe_allow_html=True)
+st.markdown("<div class='hint'>Course outcomes are required. Materials and samples improve quality.</div>", unsafe_allow_html=True)
 pii_consent = st.checkbox("I confirm I have consent to process personal data (if present).", value=False)
 
 col_a, col_b, col_c = st.columns(3, gap="large")
@@ -160,7 +134,7 @@ with col_c:
 
 st.subheader("Scope")
 course_name = st.text_input("Course name", value="", placeholder="e.g., Signals and Systems")
-topic = st.text_input("Topic", value="", placeholder="e.g., Fourier series, Z-transform, sampling")
+topic = st.text_input("Topic", value="", placeholder="e.g., Fourier series")
 
 st.subheader("Output")
 num_q = st.slider("Total questions", 5, 100, 20)
@@ -169,11 +143,13 @@ difficulty_mix = st.selectbox("Difficulty level", ["Easy", "Medium", "Hard"], in
 
 generate_clicked = st.button("Generate Questions")
 
+
 def _upload_signature(files: list) -> tuple:
     sig = []
     for f in files or []:
         sig.append((f.name, getattr(f, "size", None)))
     return tuple(sig)
+
 
 if generate_clicked:
     if not outcomes_files and not material_files:
@@ -184,6 +160,7 @@ if generate_clicked:
             + _upload_signature(material_files)
             + _upload_signature(sample_files)
         )
+        run_sig = (upload_sig, course_name, topic, num_q, marks_each, difficulty_mix)
 
         with st.spinner("Preparing content..."):
             client = get_client("data/vector_db")
@@ -255,96 +232,23 @@ if generate_clicked:
                 st.session_state.last_upload_sig = upload_sig
                 st.success(f"Ingested OK. chunks={total_chunks}")
 
-            # Load syllabus context automatically
-            auto_queries = ["Course outcomes", "Syllabus", "Module", "Unit"]
-            syllabus_ctx = []
-            for q in auto_queries:
-                syllabus_ctx += retrieve_top_k_strict(
-                    collection,
-                    q,
-                    k=3,
-                    allowed_source_types=["material", "outcomes"],
-                )
-
-            # de-dup
-            seen = set()
-            cleaned = []
-            for c in syllabus_ctx:
-                key = (c.get("source"), c.get("page"), (c.get("text") or "")[:120])
-                if key in seen:
-                    continue
-                seen.add(key)
-                cleaned.append(c)
-            st.session_state.syllabus_snippets = cleaned
-
-            agent = GeneratorAgent(model="gpt-4o-mini")
-            profile = agent.classify_subject(st.session_state.syllabus_snippets)
-            st.session_state.subject_profile = profile.model_dump()
-            if profile.recommended_mix:
-                st.session_state.mix = profile.recommended_mix.model_dump()
-
-            topics_list = [t.strip() for t in (topic or "").split(",") if t.strip()]
-            topic_for_plan = " | ".join(topics_list) if topics_list else (course_name or "General")
-            plan_obj = agent.plan(topic_for_plan, st.session_state.syllabus_snippets)
-            st.session_state.planned = plan_obj.model_dump()
-
-            planned_subs = st.session_state.planned.get("subtopics", []) or []
-            planned_subs = [s for s in planned_subs if int(s.get("importance", 3)) >= int(min_importance)]
-
-            all_ctx = []
-            for sub in planned_subs:
-                q = sub.get("query") or sub.get("name")
+            if st.session_state.last_run_sig != run_sig:
+                # Fast mode: skip subject detection + planning. Retrieve directly by topic/course.
+                query = topic or course_name or "Course content"
                 allowed_types = ["material", "outcomes"]
                 if include_sample_papers:
                     allowed_types.append("sample_paper")
-                hits = retrieve_top_k_strict(
+                all_ctx = retrieve_top_k_strict(
                     collection,
-                    q,
-                    k=top_k,
+                    query,
+                    k=max_total_ctx,
                     allowed_source_types=allowed_types,
                 )
-                for h in hits:
-                    h["subtopic"] = sub.get("name")
-                    h["importance"] = sub.get("importance", 3)
-                all_ctx += hits
-
-            all_ctx.sort(
-                key=lambda x: (
-                    -int(x.get("importance", 3)),
-                    -int(x.get("kw_score", 0)),
-                    float(x.get("distance", 9e9)),
-                )
-            )
-            # Expand coverage with a generic retrieval pass to use more of the PDFs.
-            if len(all_ctx) < max_total_ctx:
-                generic = retrieve_top_k_strict(
-                    collection,
-                    topic_for_plan or "course content",
-                    k=max_total_ctx,
-                    allowed_source_types=["material", "outcomes"],
-                )
-                all_ctx += generic
-
-            # de-dup and cap
-            seen = set()
-            deduped = []
-            for c in all_ctx:
-                key = (c.get("source"), c.get("page"), (c.get("text") or "")[:120])
-                if key in seen:
-                    continue
-                seen.add(key)
-                deduped.append(c)
-            all_ctx = deduped[:max_total_ctx]
-            if not all_ctx:
-                # Fallback: use top chunks from all material/outcome text.
-                fallback = retrieve_top_k_strict(
-                    collection,
-                    topic or course_name or "Course content",
-                    k=max_total_ctx,
-                    allowed_source_types=["material", "outcomes"],
-                )
-                all_ctx = fallback[:max_total_ctx]
-            st.session_state.ctx = all_ctx
+                st.session_state.ctx = all_ctx[:max_total_ctx]
+                st.session_state.subject_profile = None
+                st.session_state.last_run_sig = run_sig
+            else:
+                query = topic or course_name or "Course content"
 
         if not st.session_state.ctx:
             st.warning("No usable context found. Upload more materials.")
@@ -355,7 +259,7 @@ if generate_clicked:
                 "Hard": {"Easy": 0, "Medium": 0, "Hard": 100},
             }
             targets = {
-                "topic": topic_for_plan or "General",
+                "topic": topic or course_name or "General",
                 "num_questions": num_q,
                 "marks_each": marks_each,
                 "bloom_focus": bloom_focus,
@@ -373,14 +277,35 @@ if generate_clicked:
             mix_sum = sum(st.session_state.mix.values()) or 1
             norm_mix = {k: int(round(v * 100 / mix_sum)) for k, v in st.session_state.mix.items()}
 
-            with st.spinner("Generating questions..."):
+            preview_container = st.empty()
+            if num_q > 5:
+                with preview_container.container():
+                    st.subheader("Preview (quick)")
+                    st.caption("Generating a few quick questions while the full set is prepared.")
+                    with st.spinner("Generating preview..."):
+                        gen = GeneratorAgent(model="gpt-4o-mini")
+                        preview_targets = dict(targets)
+                        preview_targets["num_questions"] = 5
+                        preview_qb = gen.generate(
+                            course_name=course_name or "Course",
+                            targets=preview_targets,
+                            context_snippets=st.session_state.ctx[:15],
+                            subject_profile=st.session_state.get("subject_profile"),
+                            question_mix=norm_mix,
+                        )
+                    for q in preview_qb.questions:
+                        st.markdown(f"**{q.id} - {q.marks} marks**")
+                        st.write(q.question_text)
+                        st.divider()
+
+            with st.spinner("Generating full set..."):
                 qb, audit, logs = run_generation_loop(
                     course_name=course_name or "Course",
                     targets=targets,
                     context_snippets=st.session_state.ctx,
                     subject_profile=st.session_state.get("subject_profile"),
                     question_mix=norm_mix,
-                    max_iters=4,
+                    max_iters=1,
                     model="gpt-4o-mini",
                 )
 
