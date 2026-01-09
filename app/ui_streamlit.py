@@ -165,7 +165,7 @@ topic = st.text_input("Topic", value="", placeholder="e.g., Fourier series, Z-tr
 st.subheader("Output")
 num_q = st.slider("Total questions", 5, 100, 20)
 marks_each = st.selectbox("Marks per question", [2, 5, 10], index=0)
-difficulty_mix = st.selectbox("Difficulty mix", ["Mostly Medium", "Easy/Medium", "Medium/Hard"], index=0)
+difficulty_mix = st.selectbox("Difficulty level", ["Easy", "Medium", "Hard"], index=1)
 
 generate_clicked = st.button("Generate Questions")
 
@@ -350,9 +350,9 @@ if generate_clicked:
             st.warning("No usable context found. Upload more materials.")
         else:
             difficulty_distribution_map = {
-                "Mostly Medium": {"Easy": 20, "Medium": 60, "Hard": 20},
-                "Easy/Medium": {"Easy": 40, "Medium": 40, "Hard": 20},
-                "Medium/Hard": {"Easy": 20, "Medium": 40, "Hard": 40},
+                "Easy": {"Easy": 100, "Medium": 0, "Hard": 0},
+                "Medium": {"Easy": 0, "Medium": 100, "Hard": 0},
+                "Hard": {"Easy": 0, "Medium": 0, "Hard": 100},
             }
             targets = {
                 "topic": topic_for_plan or "General",
