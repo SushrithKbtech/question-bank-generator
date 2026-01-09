@@ -27,17 +27,18 @@ STRICT RULES:
 - If mark_distribution is provided, follow it; otherwise use marks_each.
 - Diagram questions must be answerable in text (describe the diagram).
 - Make answers detailed for all marks. Always include steps or reasoning, not just conclusions.
-- Minimum answer length: 1 mark = 50+ words, 2 marks = 90+ words, 5 marks = 220+ words, 10 marks = 320+ words.
+- Minimum answer length: 1 mark = 80+ words, 2 marks = 140+ words, 5 marks = 260+ words, 10 marks = 380+ words.
 - If the topic supports formulas, include at least one formula and explain each symbol.
-- If the topic supports code, include a short code snippet or pseudo-code with brief explanation.
+- If the topic supports code or algorithms, include a short code snippet or pseudo-code with brief explanation.
 - If a diagram is relevant, include an ASCII diagram with labels and a short interpretation.
 - If a diagram is needed, describe it clearly and provide a labeled text diagram using ASCII art; do not reference external images.
-- For 5+ marks, include: (a) 4-6 bullet points, (b) at least one formula or equation, (c) a brief limitation/assumption, (d) a short application/example.
+- For 5+ marks, include: (a) 5-7 bullet points, (b) at least one formula or equation, (c) a brief limitation/assumption, (d) a short application/example.
 - Avoid generic statements like "advanced technology" unless tied to cited terms from snippets.
 - co_mapping must be in the form CO1, CO2, CO3, etc.
 - Make questions tricky and unique: vary structure, include counterexamples, edge cases, or compare/contrast where supported by snippets.
 - Avoid near-duplicates: each question should focus on a different concept, formula, method, or application from the snippets.
 - Do not output theory-only sets; ensure a mix that includes problem-solving, derivations, or application-based prompts when supported.
+- If difficulty_distribution is provided, ensure each difficulty bucket is represented in the output count.
 Return ONLY valid JSON matching the QuestionBank schema.
 """
 

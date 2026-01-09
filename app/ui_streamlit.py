@@ -121,14 +121,15 @@ st.session_state.setdefault("last_upload_sig", None)
 collection_name = "course_material"
 chunk_size = 1000
 overlap = 200
-top_k = 6
+top_k = 8
 min_importance = 1
-max_total_ctx = 80
+max_total_ctx = 120
 include_sample_papers = True
 bloom_focus = "Mixed"
 
 st.subheader("Upload")
 st.markdown("<div class='hint'>Course outcomes are required. Materials and sample papers improve quality.</div>", unsafe_allow_html=True)
+pii_consent = st.checkbox("I confirm I have consent to process personal data (if present).", value=False)
 
 col_a, col_b, col_c = st.columns(3, gap="large")
 with col_a:
@@ -159,7 +160,7 @@ with col_c:
 
 st.subheader("Scope")
 course_name = st.text_input("Course name", value="", placeholder="e.g., Signals and Systems")
-topic = st.text_input("Topic", value="", placeholder="e.g., Fourier series")
+topic = st.text_input("Topic", value="", placeholder="e.g., Fourier series, Z-transform, sampling")
 
 st.subheader("Output")
 num_q = st.slider("Total questions", 5, 100, 20)
@@ -244,8 +245,11 @@ if generate_clicked:
                     total_chunks += len(chunks)
                     upsert_chunks(collection, chunks)
 
-                if pii_report:
-                    st.warning("PII detected in uploads. Proceeding as requested.")
+                if pii_report and not pii_consent:
+                    st.error("PII detected in uploads. Please confirm consent to proceed.")
+                    st.stop()
+                if pii_report and pii_consent:
+                    st.warning("PII detected in uploads. Proceeding with consent.")
 
                 st.session_state.ingested = True
                 st.session_state.last_upload_sig = upload_sig
@@ -279,7 +283,9 @@ if generate_clicked:
             if profile.recommended_mix:
                 st.session_state.mix = profile.recommended_mix.model_dump()
 
-            plan_obj = agent.plan(topic or course_name or "General", st.session_state.syllabus_snippets)
+            topics_list = [t.strip() for t in (topic or "").split(",") if t.strip()]
+            topic_for_plan = " | ".join(topics_list) if topics_list else (course_name or "General")
+            plan_obj = agent.plan(topic_for_plan, st.session_state.syllabus_snippets)
             st.session_state.planned = plan_obj.model_dump()
 
             planned_subs = st.session_state.planned.get("subtopics", []) or []
@@ -309,7 +315,26 @@ if generate_clicked:
                     float(x.get("distance", 9e9)),
                 )
             )
-            all_ctx = all_ctx[:max_total_ctx]
+            # Expand coverage with a generic retrieval pass to use more of the PDFs.
+            if len(all_ctx) < max_total_ctx:
+                generic = retrieve_top_k_strict(
+                    collection,
+                    topic_for_plan or "course content",
+                    k=max_total_ctx,
+                    allowed_source_types=["material", "outcomes"],
+                )
+                all_ctx += generic
+
+            # de-dup and cap
+            seen = set()
+            deduped = []
+            for c in all_ctx:
+                key = (c.get("source"), c.get("page"), (c.get("text") or "")[:120])
+                if key in seen:
+                    continue
+                seen.add(key)
+                deduped.append(c)
+            all_ctx = deduped[:max_total_ctx]
             if not all_ctx:
                 # Fallback: use top chunks from all material/outcome text.
                 fallback = retrieve_top_k_strict(
@@ -330,7 +355,7 @@ if generate_clicked:
                 "Medium/Hard": {"Easy": 20, "Medium": 40, "Hard": 40},
             }
             targets = {
-                "topic": topic or course_name or "General",
+                "topic": topic_for_plan or "General",
                 "num_questions": num_q,
                 "marks_each": marks_each,
                 "bloom_focus": bloom_focus,
@@ -355,7 +380,7 @@ if generate_clicked:
                     context_snippets=st.session_state.ctx,
                     subject_profile=st.session_state.get("subject_profile"),
                     question_mix=norm_mix,
-                    max_iters=3,
+                    max_iters=4,
                     model="gpt-4o-mini",
                 )
 
