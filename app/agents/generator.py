@@ -24,7 +24,7 @@ class GeneratorAgent:
             raise RuntimeError(
                 "OPENAI_API_KEY not found (set in .env, env vars, or .streamlit/secrets.toml)"
             )
-        self.client = ChatOpenAI(model=model, temperature=0.4, openai_api_key=api_key)
+        self.client = ChatOpenAI(model=model, temperature=0.2, openai_api_key=api_key)
         self.model = model
 
     def plan(self, topic: str, syllabus_snippets: list[dict]) -> TopicPlan:

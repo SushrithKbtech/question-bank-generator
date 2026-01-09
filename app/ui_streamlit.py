@@ -380,7 +380,7 @@ if generate_clicked:
                     context_snippets=st.session_state.ctx,
                     subject_profile=st.session_state.get("subject_profile"),
                     question_mix=norm_mix,
-                    max_iters=4,
+                    max_iters=2,
                     model="gpt-4o-mini",
                 )
 
