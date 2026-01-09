@@ -1,0 +1,13 @@
+# secrets
+.env
+.streamlit/secrets.toml
+
+# python
+.venv/
+__pycache__/
+*.pyc
+
+# local data
+data/uploads/
+data/vector_db/
+runs/

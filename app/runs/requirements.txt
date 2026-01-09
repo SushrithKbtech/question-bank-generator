@@ -1,0 +1,14 @@
+streamlit
+pydantic
+PyPDF2
+chromadb
+sentence-transformers
+langchain
+langchain-openai
+langchain-community
+langgraph
+numpy
+pandas
+openai
+python-dotenv
+reportlab

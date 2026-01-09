@@ -1,0 +1,54 @@
+from __future__ import annotations
+
+from app.agents.generator import GeneratorAgent
+from app.agents.auditor import AuditorAgent
+
+
+def run_generation_loop(
+    course_name: str,
+    targets: dict,
+    context_snippets: list[dict],
+    subject_profile: dict | None,
+    question_mix: dict | None,
+    max_iters: int = 3,
+    model: str = "gpt-4o-mini",
+):
+    gen = GeneratorAgent(model=model)
+    aud = AuditorAgent(model=model)
+
+    logs: list[dict] = []
+    critique: str | None = None
+    qb = None
+    audit = None
+
+    for i in range(max_iters):
+        qb = gen.generate(
+            course_name=course_name,
+            targets=targets,
+            context_snippets=context_snippets,
+            subject_profile=subject_profile,
+            question_mix=question_mix,
+            critique=critique,
+        )
+        audit = aud.audit(qb.model_dump(), context_snippets, targets)
+
+        logs.append(
+            {
+                "iteration": i + 1,
+                "generator_response": "Regenerated question bank with the latest critique applied."
+                if critique
+                else "Generated initial question bank.",
+                "auditor_summary": audit.summary,
+                "auditor_issues": [issue.model_dump() for issue in audit.issues],
+                "passed": audit.passed,
+            }
+        )
+
+        if audit.passed:
+            break
+
+        critique = audit.summary + "\n" + "\n".join(
+            [f"{iss.category}: {iss.detail}" for iss in audit.issues]
+        )
+
+    return qb, audit, logs
