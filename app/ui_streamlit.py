@@ -1,4 +1,10 @@
+from pathlib import Path
+import sys
 import streamlit as st
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from app.rag.ingest import save_uploaded_pdf, extract_pages_from_pdf
 from app.rag.chunks import chunk_pages
