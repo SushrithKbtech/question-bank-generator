@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.agents.generator import GeneratorAgent
 from app.agents.auditor import AuditorAgent
+from app.schemas import AuditIssue
 
 
 def run_generation_loop(
@@ -31,6 +32,19 @@ def run_generation_loop(
             critique=critique,
         )
         audit = aud.audit(qb.model_dump(), context_snippets, targets)
+
+        # Enforce quantity if context is reasonably sized
+        target_count = int(targets.get("num_questions", 0) or 0)
+        if target_count and len(context_snippets) >= max(10, target_count):
+            if len(qb.questions) < target_count:
+                audit.passed = False
+                audit.issues.append(
+                    AuditIssue(
+                        id=None,
+                        category="Quantity",
+                        detail=f"Requested {target_count} questions, generated {len(qb.questions)}.",
+                    )
+                )
 
         logs.append(
             {

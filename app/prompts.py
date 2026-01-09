@@ -14,7 +14,8 @@ Return JSON only:
 GENERATOR_SYSTEM = """You generate exam questions ONLY from provided context snippets.
 
 STRICT RULES:
-- If the snippets don't contain enough info, output FEWER questions (even 0).
+- If the snippets don't contain enough info, output FEWER questions (even 0), but first try to reach the requested count by using all relevant snippets.
+- Aim to produce exactly num_questions when context is sufficient. If you cannot, maximize count and make each question distinct.
 - Every question MUST use key terms that appear in cited snippets.
 - source_citation MUST match snippet source+page exactly and include a supporting snippet.
 - DO NOT use outside knowledge, textbooks, or the internet unless provided in context.
@@ -22,13 +23,21 @@ STRICT RULES:
 - Bias toward common exam styles for the detected subject and the requested mix.
 - If a snippet is labeled source_type=sample_paper, use it for style only. Do not copy or lightly edit its questions.
 - Include at least two exact technical terms/phrases (2-4 words) from cited snippets in each question or answer.
+- Use different cited snippets across questions when possible to expand coverage.
 - If mark_distribution is provided, follow it; otherwise use marks_each.
 - Diagram questions must be answerable in text (describe the diagram).
-- Make answers as detailed as the marks require: 1 mark = 1-2 crisp sentences, 2 marks = short paragraph, 5+ marks = multi-paragraph with steps, formulas, and assumptions where relevant.
+- Make answers detailed for all marks. Always include steps or reasoning, not just conclusions.
+- Minimum answer length: 1 mark = 50+ words, 2 marks = 90+ words, 5 marks = 220+ words, 10 marks = 320+ words.
+- If the topic supports formulas, include at least one formula and explain each symbol.
+- If the topic supports code, include a short code snippet or pseudo-code with brief explanation.
+- If a diagram is relevant, include an ASCII diagram with labels and a short interpretation.
 - If a diagram is needed, describe it clearly and provide a labeled text diagram using ASCII art; do not reference external images.
-- For 5+ marks, include: (a) 3-5 bullet points, (b) at least one formula or equation if applicable to the topic, (c) a brief limitation/assumption.
+- For 5+ marks, include: (a) 4-6 bullet points, (b) at least one formula or equation, (c) a brief limitation/assumption, (d) a short application/example.
 - Avoid generic statements like "advanced technology" unless tied to cited terms from snippets.
 - co_mapping must be in the form CO1, CO2, CO3, etc.
+- Make questions tricky and unique: vary structure, include counterexamples, edge cases, or compare/contrast where supported by snippets.
+- Avoid near-duplicates: each question should focus on a different concept, formula, method, or application from the snippets.
+- Do not output theory-only sets; ensure a mix that includes problem-solving, derivations, or application-based prompts when supported.
 Return ONLY valid JSON matching the QuestionBank schema.
 """
 
@@ -54,11 +63,12 @@ Red-line checks (must report as issues if violated):
 2) Bloom alignment: The verb in the question does not match the tagged Bloom level.
 3) Redundancy: Two or more questions are overly similar in intent or wording.
 4) Distribution: The bank does not meet the requested Easy/Medium/Hard mix.
+5) Quantity: The output is far below the requested number of questions when enough context is available.
 
 Return JSON only:
 {{
   "passed": true/false,
-  "issues": [{{"id":"Qx","category":"Hallucination|BloomAlignment|Redundancy|Distribution|Other","detail":"..."}}],
+  "issues": [{{"id":"Qx","category":"Hallucination|BloomAlignment|Redundancy|Distribution|Quantity|Other","detail":"..."}}],
   "summary":"..."
 }}
 """

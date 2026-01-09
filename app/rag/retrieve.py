@@ -52,7 +52,7 @@ def retrieve_top_k_strict(
             "kw_score": score,
         })
 
-    # Gate: require at least 1 keyword hit unless query is extremely generic
+    # Gate: require keyword hit, but don't over-prune; fallback handled in UI.
     if len(keywords) >= 3:
         candidates = [c for c in candidates if c["kw_score"] >= 1]
 
