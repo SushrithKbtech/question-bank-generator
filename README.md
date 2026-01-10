@@ -47,15 +47,15 @@ streamlit run app/ui_streamlit.py
 
 ## Usage Flow
 
-1) Upload PDFs (course material + optional sample papers).
-2) Click "Ingest PDFs into Vector DB".
-3) Load syllabus context, detect subject, and plan subtopics.
-4) Retrieve context for subtopics.
-5) Generate questions, review logs and audit issues.
-6) Export CSV/PDF with coverage report.
+1) Upload PDFs: course outcomes, course materials, and optional sample papers.
+2) Enter course name and topic (comma-separated topics supported).
+3) Choose total questions, marks, and difficulty.
+4) Click "Generate Questions". The system ingests, retrieves, generates, and audits automatically.
+5) Review questions, coverage, and export CSV/PDF.
 
 ## Notes
 
+- The app uses a fast mode: it retrieves directly by topic/course to reduce latency.
 - Re-ingest PDFs if you change chunking settings or update the vector store schema.
 - Sample papers are used for style only; the model is instructed not to copy them.
-- PII detection warns but does not block ingestion.
+- If PII is detected, you must confirm consent before continuing.
