@@ -1,5 +1,10 @@
 from pathlib import Path
 import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 import streamlit as st
 
 from app.rag.ingest import save_uploaded_pdf, extract_pages_from_pdf
@@ -12,10 +17,6 @@ from app.agents.generator import GeneratorAgent
 from app.agents.loop import run_generation_loop
 from app.reporting import compute_coverage_report
 from app.export import questions_to_csv_bytes, questions_to_pdf_bytes
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 
 st.set_page_config(page_title="Outcome-QBank", layout="wide")
 
